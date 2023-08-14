@@ -4,28 +4,32 @@ import mysql.connector
 
 # Establish a connection to the MySQL database
 db = mysql.connector.connect(
-    host="your host",
-    user="your username",
+    host="localhost",
+    user="root",
     password="your password",
-    database="db name"
+    database="your database"
 )
 cursor = db.cursor()
 
 # Declare window as a global variable
 window = None
 
+def show_message(title, message):
+    # Show a message dialog
+    messagebox.showinfo(title, message)
+
 def main_menu():
     global window
     # Create the main menu window
     window = tk.Tk()
     window.title("Main Menu")
-    window.geometry('600x400')
+    window.geometry('300x200')
 
     # Create menu buttons
-    student_button = tk.Button(window, text="Student", command=student_menu, width=10, height=2)
+    student_button = tk.Button(window, text="Student", command=student_menu, width=20, height=2)
     student_button.pack()
 
-    course_button = tk.Button(window, text="Course", command=course_menu, width=10, height=2)
+    course_button = tk.Button(window, text="Course", command=course_menu, width=20, height=2)
     course_button.pack()
 
     # Start the main loop
@@ -35,33 +39,41 @@ def student_menu():
     # Create the student menu window
     student_window = tk.Toplevel(window)
     student_window.title("Student Menu")
-    student_window.geometry('600x400')
+    student_window.geometry('600x300')
 
-    # Create menu buttons
-    write_button = tk.Button(student_window, text="Write Student Data", command=write_student_data)
+    # Create menu buttons with icons and tooltips
+    write_button = tk.Button(student_window, text="Write Student Data", command=write_student_data, width=20, height=2)
     write_button.pack()
 
-    list_button = tk.Button(student_window, text="List Student Data", command=list_student_data)
+    list_button = tk.Button(student_window, text="List Student Data", command=list_student_data, width=20, height=2)
     list_button.pack()
 
-    edit_button = tk.Button(student_window, text="Edit Student Data", command=edit_student_data)
+    edit_button = tk.Button(student_window, text="Edit Student Data", command=edit_student_data, width=20, height=2)
     edit_button.pack()
 
-    delete_button = tk.Button(student_window, text="Delete Student Data", command=delete_student_data)
+    delete_button = tk.Button(student_window, text="Delete Student Data", command=delete_student_data, width=20, height=2)
     delete_button.pack()
 
-    search_year_button = tk.Button(student_window, text="Search Student by Year", command=search_student_year)
-    search_year_button.pack()
+    search_button = tk.Button(student_window, text="Search Student", command=search_students, width=20, height=2)
+    search_button.pack()
 
-    search_name_button = tk.Button(student_window, text="Search Student by Name", command=search_student_name)
-    search_name_button.pack()
-
-    back_button = tk.Button(student_window, text="Back to Main Menu", command=student_window.destroy)
+    back_button = tk.Button(student_window, text="Back to Main Menu", command=student_window.destroy, width=20, height=2)
     back_button.pack()
 
-def show_message(title, message):
-    # Show a message dialog
-    messagebox.showinfo(title, message)
+def show_data(title, data):
+    # Display data in a new window using a Listbox widget with scrollbars
+    data_window = tk.Toplevel(window)
+    data_window.title(title)
+
+    listbox = tk.Listbox(data_window, width=100, height=20)
+    listbox.pack()
+
+    scrollbar = tk.Scrollbar(data_window, command=listbox.yview)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    listbox.config(yscrollcommand=scrollbar.set)
+
+    for row in data:
+        listbox.insert(tk.END, str(row))
 
 def get_input(prompt):
     # Get user input using a dialog window
@@ -75,7 +87,7 @@ def write_student_data():
         return
 
     if is_student_exists(id_number):
-        tk.messagebox.showerror("Error", "This student already exists.")
+        messagebox.showerror("Error", "This student already exists.")
         return
 
     first_name = get_input("Enter First Name:")
@@ -107,7 +119,7 @@ def write_student_data():
     cursor.execute(query, values)
     db.commit()
 
-    tk.messagebox.showinfo("Success", "Student Data written successfully.")
+    messagebox.showinfo("Success", "Student Data written successfully.")
 
 def is_student_exists(id_number):
     # Check if the student record already exists in the database
@@ -121,20 +133,14 @@ def list_student_data():
     query = "SELECT * FROM students"
     cursor.execute(query)
     result = cursor.fetchall()
-    show_data("Student Data", result)
 
-def show_data(title, data):
-    # Display data in a new window using a Text widget
-    data_window = tk.Toplevel(window)
-    data_window.title(title)
+    # Exclude rows with a None value in the first column (assuming it is the ID column)
+    temp_result = []
+    for item in result:
+        if item[1] is not None:
+            temp_result.append(item[1:])
 
-    text_widget = tk.Text(data_window, width=100, height=20)
-    text_widget.pack()
-
-    for row in data:
-        text_widget.insert(tk.END, str(row) + "\n")
-
-    text_widget.configure(state="disabled")
+    show_data("Student Data", temp_result)
 
 def edit_student_data():
     # Update an existing student record in the database
@@ -179,35 +185,59 @@ def delete_student_data():
 
     show_message("Success", "Student data deleted successfully.")
 
-def search_student_year():
-    # Search for students by year
-    year = get_input("Enter the Year of student (or 'q' to quit): ")
-    if year is None or year.strip().lower() == 'q':
+def search_students():
+    search_option = get_input("Choose and enter search keyword (ID, Name, Year, Gender, Course): ")
+    if search_option is None or search_option.strip().lower() == 'q':
         return
 
-    query = "SELECT * FROM students WHERE year_level = %s"
-    cursor.execute(query, (year,))
+    query = ""
+    values = ()
+    result = None
+
+    if search_option.lower() == 'id':
+        id_number = get_input("Enter the ID Number of student: ")
+        if id_number is None:
+            return
+        query = "SELECT * FROM students WHERE id_number = %s"
+        values = (id_number,)
+    elif search_option.lower() == 'name':
+        name = get_input("Enter the first name of student: ")
+        if name is None:
+            return
+        query = "SELECT * FROM students WHERE first_name LIKE %s OR last_name LIKE %s"
+        values = (f"%{name}%", f"%{name}%")
+    elif search_option.lower() == 'year':
+        year = get_input("Enter the Year of student: ")
+        if year is None:
+            return
+        query = "SELECT * FROM students WHERE year_level = %s"
+        values = (year,)
+    elif search_option.lower() == 'gender':
+        gender = get_input("Enter the Gender of student: ")
+        if gender is None:
+            return
+        query = "SELECT * FROM students WHERE gender = %s"
+        values = (gender,)
+    elif search_option.lower() == 'course':
+        course = get_input("Enter the Course of student: ")
+        if course is None:
+            return
+        query = "SELECT * FROM students WHERE course LIKE %s"
+        values = (f"%{course}%",)
+
+    cursor.execute(query, values)
     result = cursor.fetchall()
 
-    if result:
-        show_data("Search Results", result)
-    else:
-        show_message("Search Result", "Student does not exist.")
-
-def search_student_name():
-    # Search for students by name
-    name = get_input("Enter the first name of student (or 'q' to quit): ")
-    if name is None or name.strip().lower() == 'q':
+    if not result:  # Check if the result is empty
+        show_message("Search Result", "No matching records found.")
         return
 
-    query = "SELECT * FROM students WHERE first_name LIKE %s OR last_name LIKE %s"
-    cursor.execute(query, (f"%{name}%", f"%{name}%"))
-    result = cursor.fetchall()
+    # Exclude the id from each row in the result
+    temp_result = []
+    for item in result:
+        temp_result.append(item[1:])
 
-    if result:
-        show_data("Search Results", result)
-    else:
-        show_message("Search Result", "Student does not exist.")
+    show_data("Search Results", temp_result)
 
 def course_menu():
     # Create the course menu window
@@ -215,23 +245,23 @@ def course_menu():
     course_window.title("Course Menu")
     course_window.geometry('600x400')
 
-    # Create menu buttons
-    write_button = tk.Button(course_window, text="Write Course Data", command=write_course_data)
+    # Create menu buttons with icons and tooltips
+    write_button = tk.Button(course_window, text="Write Course Data", command=write_course_data, width=20, height=2)
     write_button.pack()
 
-    list_button = tk.Button(course_window, text="List Course Data", command=list_course_data)
+    list_button = tk.Button(course_window, text="List Course Data", command=list_course_data, width=20, height=2)
     list_button.pack()
 
-    edit_button = tk.Button(course_window, text="Edit Course Data", command=edit_course_data)
+    edit_button = tk.Button(course_window, text="Edit Course Data", command=edit_course_data, width=20, height=2)
     edit_button.pack()
 
-    delete_button = tk.Button(course_window, text="Delete Course Data", command=delete_course_data)
+    delete_button = tk.Button(course_window, text="Delete Course Data", command=delete_course_data, width=20, height=2)
     delete_button.pack()
 
-    search_button = tk.Button(course_window, text="Search Course", command=search_courses)
+    search_button = tk.Button(course_window, text="Search Course", command=search_courses, width=20, height=2)
     search_button.pack()
 
-    back_button = tk.Button(course_window, text="Back to Main Menu", command=course_window.destroy)
+    back_button = tk.Button(course_window, text="Back to Main Menu", command=course_window.destroy, width=20, height=2)
     back_button.pack()
 
 def write_course_data():
@@ -269,6 +299,9 @@ def does_course_exists(course_name):
     query = "SELECT course_name FROM courses WHERE course_name = %s"
     cursor.execute(query, (course_name,))
     result = cursor.fetchone()
+
+    print("Course exists in database:", result)  # Debug print
+
     return result is not None
 
 def list_course_data():
@@ -276,23 +309,29 @@ def list_course_data():
     query = "SELECT * FROM courses"
     cursor.execute(query)
     result = cursor.fetchall()
-    show_data("Course Data", result)
+
+    # Exclude the id from each row in the result
+    temp_result = []
+    for item in result:
+        temp_result.append(item[1:])
+
+    show_data("Course Data", temp_result)
 
 def edit_course_data():
     # Update an existing course record in the database
-    course_name = get_input("Enter Course Name to edit (or 'q' to quit): ")
-    if course_name is None or course_name.strip().lower() == 'q':
+    course_code = get_input("Enter Course Code to edit (or 'q' to quit): ")
+    if course_code is None or course_code.strip().lower() == 'q':
         return
 
-    if not does_course_exists(course_name):
+    if not does_course_exists(course_code):
         show_message("Error", "Course not found.")
         return
 
-    course_code = get_input("Enter new Course Code: ")
+    new_course_code = get_input("Enter new Course Code: ")
     college = get_input("Enter new College: ")
 
-    query = "UPDATE courses SET course_code = %s, college = %s WHERE course_name = %s"
-    values = (course_code, college, course_name)
+    query = "UPDATE courses SET course_code = %s, college = %s WHERE course_code = %s"
+    values = (new_course_code, college, course_code)
     cursor.execute(query, values)
     db.commit()
 
@@ -304,7 +343,10 @@ def delete_course_data():
     if course_name is None or course_name.strip().lower() == 'q':
         return
 
+    print("Deleting course:", course_name)  # Debug print
+
     if not does_course_exists(course_name):
+        print("Course not found in database.")  # Debug print
         show_message("Error", "Course not found.")
         return
 
@@ -332,6 +374,11 @@ def search_courses():
         show_data("Search Results", result)
     else:
         show_message("Search Result", "Course does not exist.")
+
+def get_confirmation(message):
+    # Show a confirmation dialog with Yes/No options
+    result = messagebox.askyesno("Confirmation", message)
+    return result
 
 # Start the program
 main_menu()
