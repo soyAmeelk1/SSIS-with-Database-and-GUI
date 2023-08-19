@@ -101,7 +101,7 @@ def create_labeled_combobox(parent, label_text, values, default_value):
 
 def write_student_data():
     # Get student's details
-    id_number = get_input("Enter ID Number (or 'q' to quit): ")
+    id_number = get_input("Enter ID Number ")
     if id_number == 'q':
         return
 
@@ -128,7 +128,11 @@ def write_student_data():
     year_level = get_input("Enter Year:")
     if not year_level:
         return
-
+    
+    course_code = get_input("Enter Course Code:")  # New input for course code
+    if not course_code:
+        return
+    
     id_number_with_dash = insert_dash_to_id(id_number)
 
     def save_student():
@@ -136,7 +140,7 @@ def write_student_data():
             show_message("Error", "This student already exists.")
             return
 
-        if insert_student_record(id_number_with_dash, first_name, last_name, gender_var.get(), year_level, course_var.get()):
+        if insert_student_record(id_number_with_dash, first_name, last_name, gender_var.get(), year_level, course_var.get(), course_code):
             show_message("Success", "Student Data written successfully.")
             student_window.destroy()
 
@@ -158,10 +162,10 @@ def is_student_exists(id_number):
     result = cursor.fetchone()
     return result is not None
 
-def insert_student_record(id_number, first_name, last_name, gender, year_level, course):
+def insert_student_record(id_number, first_name, last_name, gender, year_level, course, course_code):
     try:
-        query = "INSERT INTO students (id_number, first_name, last_name, gender, year_level, course) VALUES (%s, %s, %s, %s, %s, %s)"
-        values = (id_number, first_name, last_name, gender, year_level, course)
+        query = "INSERT INTO students (id_number, first_name, last_name, gender, year_level, course, course_code) VALUES (%s, %s, %s, %s, %s, %s, %s)"
+        values = (id_number, first_name, last_name, gender, year_level, course, course_code)
         cursor.execute(query, values)
         db.commit()
         return True
@@ -171,7 +175,7 @@ def insert_student_record(id_number, first_name, last_name, gender, year_level, 
 
 def list_student_data():
     # Retrieve and display all student records from the database
-    query = "SELECT id_number, first_name, last_name, gender, year_level, course FROM students"
+    query = "SELECT id_number, first_name, last_name, gender, year_level, course, course_code FROM students"
     cursor.execute(query)
     result = cursor.fetchall()
 
@@ -179,22 +183,41 @@ def list_student_data():
 
 def edit_student_data():
     # Update an existing student record in the database
-    id_number = get_input("Enter ID Number to edit (or 'q' to quit): ")
+    id_number = get_input("Enter ID Number to edit ")
+
     if id_number is None or id_number.strip().lower() == 'q':
-        return
+        return  # Cancel the editing process if 'q' or empty input
 
     if not is_student_exists(id_number):
         show_message("Error", "Student not found.")
         return
 
     first_name = get_input("Enter new First Name: ")
-    last_name = get_input("Enter new Last Name: ")
-    gender = get_input("Enter new Gender: ")
-    year = get_input("Enter new Year: ")
-    course = get_input("Enter new Course: ")
+    if first_name is None:
+        return  # Cancel the editing process if first_name is not provided
 
-    query = "UPDATE students SET first_name = %s, last_name = %s, gender = %s, year_level = %s, course = %s WHERE id_number = %s"
-    values = (first_name, last_name, gender, year, course, id_number)
+    last_name = get_input("Enter new Last Name: ")
+    if last_name is None:
+        return  # Cancel the editing process if last_name is not provided
+
+    gender = get_input("Enter new Gender: ")
+    if gender is None:
+        return  # Cancel the editing process if gender is not provided
+
+    year = get_input("Enter new Year: ")
+    if year is None:
+        return  # Cancel the editing process if year is not provided
+
+    course = get_input("Enter new Course: ")
+    if course is None:
+        return  # Cancel the editing process if course is not provided
+    
+    course_code = get_input("Enter new Course Code: ")  # New input for course code
+    if course_code is None:
+        return  # Cancel the editing process if course code is not provided
+
+    query = "UPDATE students SET first_name = %s, last_name = %s, gender = %s, year_level = %s, course = %s, course_code = %s WHERE id_number = %s"
+    values = (first_name, last_name, gender, year, course, course_code, id_number)  # Include course_code in values
     cursor.execute(query, values)
     db.commit()
 
@@ -203,7 +226,7 @@ def edit_student_data():
 def delete_student_data():
     try:
         # Delete an existing student record from the database
-        id_number = get_input("Enter ID Number to delete (or 'q' to quit): ")
+        id_number = get_input("Enter ID Number to delete ")
         if id_number is None or id_number.strip().lower() == 'q':
             return
 
@@ -234,7 +257,7 @@ def search_students():
     result = None
 
     if search_option.lower() == 'id':
-        id_number = get_input("Enter the ID Number of student: ")
+        id_number = get_input("Enter the ID Number of student ")
         if id_number is None:
             return
         query = "SELECT id_number, first_name, last_name, gender, year_level, course FROM students WHERE id_number = %s"
@@ -277,7 +300,7 @@ def course_menu():
     # Create the course menu window
     course_window = tk.Toplevel(window)
     course_window.title("Course Menu")
-    course_window.geometry('600x400')
+    course_window.geometry('600x300')
 
     # Create menu buttons with icons and tooltips
     write_button = tk.Button(course_window, text="Write Course Data", command=write_course_data, width=20, height=2)
@@ -300,7 +323,7 @@ def course_menu():
 
 def write_course_data():
     # Create a new course record
-    course_name = get_input("Enter Course Name:")
+    course_name = get_input("Enter Course Name ")
     if course_name is None:
         return
 
@@ -383,7 +406,7 @@ def list_course_data():
 
 def edit_course_data():
     # Update an existing course record in the database
-    course_name = get_input("Enter Course Name to edit (or 'q' to quit): ")
+    course_name = get_input("Enter Course Name to edit ")
 
     if course_name is None or course_name.strip().lower() == 'q':
         return
@@ -442,7 +465,7 @@ def update_students_course(old_course_name, new_course_name):
 
 def delete_course_data():
     # Delete an existing course record from the database
-    course_name = get_input("Enter Course Name to delete (or 'q' to quit): ")
+    course_name = get_input("Enter Course Name to delete ")
     if course_name is None or course_name.strip().lower() == 'q':
         return
 
@@ -472,7 +495,7 @@ def delete_students_with_course(course_name):
 
 def search_courses():
     # Search for courses
-    keyword = get_input("Enter a keyword to search for courses (or 'q' to quit): ")
+    keyword = get_input("Enter a keyword to search for courses ")
     if keyword is None or keyword.strip().lower() == 'q':
         return
 
